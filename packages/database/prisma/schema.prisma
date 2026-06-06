@@ -1,0 +1,275 @@
+// NexComm Database Schema
+// Phase 1: MVP Foundation
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  MODERATOR
+  MEMBER
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DELETED
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  VIDEO
+  AUDIO
+  FILE
+  VOICE_MESSAGE
+  LOCATION
+}
+
+enum MessageStatus {
+  SENT
+  DELIVERED
+  READ
+}
+
+enum GroupType {
+  PRIVATE
+  BROADCAST
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  username      String    @unique
+  passwordHash  String
+  role          UserRole  @default(MEMBER)
+  status        UserStatus @default(ACTIVE)
+  avatarUrl     String?
+  firstName     String?
+  lastName      String?
+  twoFactorSecret String?
+  twoFactorEnabled Boolean @default(false)
+  
+  // Relations
+  sentMessages       Message[]        @relation("SentMessages")
+  receivedMessages   Message[]        @relation("ReceivedMessages")
+  groupMemberships   GroupMember[]
+  ownedGroups        Group[]          @relation("GroupOwner")
+  sessions           Session[]
+  auditLogs          AuditLog[]
+  sharedLocations    LocationShare[]
+  inviteCodes        InviteCode[]
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  lastSeenAt    DateTime?
+
+  @@index([email])
+  @@index([role])
+  @@index([status])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token        String   @unique
+  refreshToken String   @unique
+  deviceInfo   String?
+  ipAddress    String?
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+  @@index([token])
+}
+
+model Group {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  avatarUrl   String?
+  type        GroupType @default(PRIVATE)
+  ownerId     String
+  owner       User      @relation("GroupOwner", fields: [ownerId], references: [id])
+  isArchived  Boolean   @default(false)
+  
+  // Settings
+  allowMessages    Boolean @default(true)
+  allowFiles       Boolean @default(true)
+  allowLocation    Boolean @default(true)
+  
+  // Relations
+  members      GroupMember[]
+  messages     Message[]
+  locationShares LocationShare[]
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([ownerId])
+  @@index([type])
+}
+
+model GroupMember {
+  id        String   @id @default(cuid())
+  groupId   String
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      UserRole @default(MEMBER)
+  isModerator Boolean @default(false)
+  
+  joinedAt  DateTime @default(now())
+
+  @@unique([groupId, userId])
+  @@index([groupId])
+  @@index([userId])
+}
+
+model Message {
+  id        String      @id @default(cuid())
+  content   String?     // Encrypted for E2EE
+  type      MessageType @default(TEXT)
+  senderId  String
+  sender    User        @relation("SentMessages", fields: [senderId], references: [id])
+  groupId   String?
+  group     Group?      @relation(fields: [groupId], references: [id])
+  recipientId String?
+  recipient User?       @relation("ReceivedMessages", fields: [recipientId], references: [id])
+  
+  // Reply/Quote support
+  replyToId String?
+  replyTo   Message?    @relation("Replies", fields: [replyToId], references: [id])
+  replies   Message[]   @relation("Replies")
+  
+  // File attachments
+  fileUrl   String?
+  fileName  String?
+  fileSize  Int?
+  mimeType  String?
+  
+  // Location data (if type is LOCATION)
+  latitude  Float?
+  longitude Float?
+  locationDuration Int? // in minutes
+  
+  // Status
+  status    MessageStatus @default(SENT)
+  isEdited  Boolean   @default(false)
+  isDeleted Boolean   @default(false)
+  isPinned  Boolean   @default(false)
+  
+  // Reactions (stored as JSON: [{emoji, userId, createdAt}])
+  reactions Json?
+  
+  // Edit history (stored as JSON array)
+  editHistory Json?
+  
+  readBy    ReadReceipt[]
+  
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  expiresAt DateTime? // For message retention policy
+
+  @@index([senderId])
+  @@index([groupId])
+  @@index([recipientId])
+  @@index([createdAt])
+  @@index([type])
+}
+
+model ReadReceipt {
+  id        String   @id @default(cuid())
+  messageId String
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  readAt    DateTime @default(now())
+
+  @@unique([messageId, userId])
+  @@index([messageId])
+  @@index([userId])
+}
+
+model LocationShare {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  groupId   String
+  group     Group    @relation(fields: [groupId], references: [id])
+  
+  latitude  Float
+  longitude Float
+  accuracy  Float?   // in meters
+  
+  isActive  Boolean  @default(true)
+  expiresAt DateTime
+  stoppedAt DateTime?
+  
+  // History tracking
+  trackedAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([groupId])
+  @@index([isActive])
+}
+
+model InviteCode {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  email     String?
+  createdById String
+  createdBy User     @relation(fields: [createdById], references: [id])
+  
+  used      Boolean  @default(false)
+  usedBy    String?
+  expiresAt DateTime
+  
+  createdAt DateTime @default(now())
+
+  @@index([code])
+  @@index([createdById])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String
+  entityType String
+  entityId  String?
+  performedBy String
+  performer User     @relation(fields: [performedBy], references: [id])
+  
+  metadata  Json?    // Additional context
+  ipAddress String?
+  
+  createdAt DateTime @default(now())
+
+  @@index([performedBy])
+  @@index([action])
+  @@index([createdAt])
+}
+
+model FileUpload {
+  id        String   @id @default(cuid())
+  url       String
+  fileName  String
+  fileSize  Int
+  mimeType  String
+  uploadedBy String
+  
+  virusScanned Boolean @default(false)
+  virusScanStatus String? // "clean", "infected", "pending"
+  
+  createdAt DateTime @default(now())
+
+  @@index([uploadedBy])
+}
