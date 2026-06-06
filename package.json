@@ -1,0 +1,31 @@
+{
+  "name": "nexcomm",
+  "version": "1.0.0",
+  "description": "Private admin-controlled communication platform with video, messaging, and GPS tracking",
+  "private": true,
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev --parallel",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "start": "turbo run start",
+    "db:migrate": "cd packages/database && npm run migrate",
+    "db:seed": "cd packages/database && npm run seed",
+    "db:studio": "cd packages/database && npm run studio"
+  },
+  "keywords": ["communication", "video-calling", "messaging", "gps-tracking"],
+  "author": "Platform Owner",
+  "license": "ISC",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "turbo": "^2.9.16",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
