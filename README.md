@@ -1,115 +1,92 @@
-# NexComm - Private Communication Platform
+# NexComm - Custom Communication Platform
 
-A **private, admin-controlled, full-stack communication platform** combining real-time video calling, instant messaging, content sharing, and live GPS location tracking.
+A private, admin-controlled, full-stack communication platform combining real-time video calling, instant messaging, content sharing, and live GPS location tracking.
 
-## 🚀 Features
+## ✅ Completed Features
 
-### Core Modules
-- **Video Calling**: 1-on-1 and group calls (up to 12 participants) with screen sharing
-- **Messaging**: E2EE direct messages, group chats, reactions, read receipts
-- **Content Sharing**: Files, images, voice messages with virus scanning
-- **GPS Location**: Real-time location sharing with geofencing alerts
-
-### Admin Control Panel
-- User management (invite, suspend, remove)
+### Backend (`packages/server`)
+- Express REST API with security middleware
+- JWT authentication with refresh tokens
+- User management (CRUD, roles, suspend)
 - Group management
-- Platform settings & analytics
-- Audit logs
+- Message routes with reactions, pin, search
+- File upload endpoints
+- Socket.IO WebSocket for real-time features
+- WebRTC signaling support
+- Live location sharing via WebSocket
+- Typing indicators and read receipts
+- RBAC middleware
 
-## 🏗️ Architecture
+### Database (`packages/database`)
+- Prisma schema with 10 models
+- Service functions for Auth, Users, Groups, Messages
 
-```
-nexcomm/
-├── apps/
-│   ├── web/          # Next.js PWA (User app)
-│   ├── admin/        # Next.js Admin dashboard
-│   └── mobile/       # React Native app
-├── packages/
-│   ├── server/       # Node.js API + WebSocket
-│   ├── database/     # Prisma ORM + schemas
-│   └── shared/       # Shared types & utilities
-├── docker-compose.yml
-├── turbo.json
-└── TASKS.md
-```
+### Admin Dashboard (`apps/admin`)
+- Login page with authentication
+- Dashboard with real-time statistics
+- User Management Table with:
+  - Role changes (Member/Moderator/Admin)
+  - Suspend/unsuspend users
+  - Delete users
+  - **Initiate audio/video calls to any user** ⭐
+- Modern dark theme UI
 
-## 🛠️ Tech Stack
+### Web App (`apps/web`)
+- **Chat Page** (`/chat/[chatId]`):
+  - Real-time messaging via Socket.IO
+  - Read receipts, typing indicators
+  - Audio/Video call buttons
+  - Location sharing button
+  - Voice message recording
 
-| Layer | Technology |
-|-------|------------|
-| Frontend Web | Next.js 14 + TypeScript + TailwindCSS |
-| Mobile | React Native (Expo) |
-| Backend | Node.js + Express + Socket.IO |
-| Database | PostgreSQL + Prisma ORM |
-| Cache | Redis |
-| Video | LiveKit SFU + WebRTC |
-| Storage | AWS S3 |
-| Maps | Mapbox GL |
+- **Call Page** (`/call/[callId]`):
+  - WebRTC peer-to-peer video/audio calls
+  - Mute/unmute, toggle camera
+  - Screen sharing
+  - In-call text chat sidebar
+  - Call duration timer
 
-## 🚦 Quick Start
+- **Location Sharing** (`/location`):
+  - Real-time GPS tracking
+  - Configurable duration (15min - 8 hours)
+  - Pause/Resume/Stop controls
+  - Map view with user markers
 
-### Prerequisites
-- Node.js 18+
-- Docker & Docker Compose
-- pnpm or npm
+## 🚀 Quick Start
 
-### 1. Clone & Install
 ```bash
-cd /workspace
+# 1. Install dependencies
 npm install
-```
 
-### 2. Start Infrastructure
-```bash
-docker-compose up -d postgres redis
-```
+# 2. Start infrastructure
+docker-compose up -d
 
-### 3. Setup Environment
-```bash
+# 3. Setup environment
 cp .env.example .env
-# Edit .env with your credentials
-```
 
-### 4. Initialize Database
-```bash
-cd packages/database
-npm run migrate
-npm run generate
-```
+# 4. Initialize database
+cd packages/database && npx prisma generate && npx prisma migrate dev && cd ../..
 
-### 5. Run Development
-```bash
-cd /workspace
+# 5. Run development servers
 npm run dev
 ```
 
-## 📋 Project Status
+Access:
+- Web App: http://localhost:3000
+- Admin Dashboard: http://localhost:3001
+- Backend API: http://localhost:4000
 
-### Phase 1: MVP Foundation (In Progress)
-- [x] Project structure & monorepo setup
-- [x] Database schema design
-- [x] Authentication services
-- [x] User management services
-- [x] Group management services
-- [x] Message services
-- [ ] Server API implementation
-- [ ] Web frontend
-- [ ] Mobile apps
+## 📱 Key Feature: Admin Calling
 
-See [TASKS.md](./TASKS.md) for full roadmap.
+Admins can initiate calls directly from the user management table by clicking the phone or video icon next to any user. This triggers WebRTC signaling via Socket.IO.
 
-## 🔐 Security
+## 🔧 Tech Stack
 
-- End-to-end encryption for DMs (Signal Protocol)
-- DTLS-SRTP for WebRTC media
-- JWT + Refresh tokens for auth
-- Role-based access control (RBAC)
-- Rate limiting & input sanitization
-
-## 📄 License
-
-ISC - Private Platform
-
----
-
-*Built according to PRD v1.0*
+| Layer | Technology |
+|-------|-----------|
+| Frontend | Next.js 14, React, Tailwind CSS |
+| Backend | Node.js, Express, TypeScript |
+| Real-Time | Socket.IO, WebRTC |
+| Database | PostgreSQL, Prisma ORM |
+| Cache | Redis |
+| Auth | JWT + Refresh Tokens |
